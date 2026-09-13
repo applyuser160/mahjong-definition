@@ -156,12 +156,49 @@ pub struct TurnHint {
     pub best_discard: TileName,                      // 推奨打牌
     pub rationale: String,                           // なぜその打牌なのかの解説文
 }
+
+/// 毎巡の手番打牌決定記録
+pub struct TurnDecisionRecord {
+    pub turn: usize,                                 // 巡目
+    pub chosen_tile: TileName,                       // ユーザーが選択した打牌
+    pub chosen_ev: f64,                              // 選択打牌のEV
+    pub best_tile: TileName,                         // AI推奨最善打牌
+    pub best_ev: f64,                                // 最善打牌のEV
+    pub ev_loss: f64,                                // EV損失 (best_ev - chosen_ev)
+    pub candidates: Vec<DiscardCandidateEvaluation>, // 当該巡の全候補評価
+}
+
+/// 悪手・疑問手記録
+pub struct BlunderRecord {
+    pub turn: usize,
+    pub chosen_tile: TileName,
+    pub best_tile: TileName,
+    pub ev_loss: f64,
+    pub severity: BlunderSeverity,                   // Inaccuracy (疑問手) / Mistake (悪手) / Blunder (大悪手)
+    pub explanation: String,                         // なぜ悪手なのかの解説
+}
+
+pub enum BlunderSeverity {
+    Inaccuracy, // 損失 150〜400点
+    Mistake,    // 損失 400〜1000点
+    Blunder,    // 損失 1000点以上
+}
+
+/// 対局全体の学習振り返りレポート
+pub struct MatchReviewReport {
+    pub total_turns: usize,                          // 総打牌数
+    pub optimal_picks_count: usize,                  // AI最善手と一致した回数
+    pub accuracy_rate: f64,                          // 打牌精度 (一致率 0.0 ~ 1.0)
+    pub total_ev_loss: f64,                          // 累計EV損失
+    pub blunders: Vec<BlunderRecord>,                // 悪手一覧（EV損失順）
+}
 ```
 
 ---
 
-## 5. 主要シーケンス図（手番時のヒント生成フロー）
+## 5. 主要シーケンス図
 
+### 5.1 手番時のヒント生成フロー
 ```mermaid
 sequenceDiagram
     autonumber
@@ -192,6 +229,27 @@ sequenceDiagram
     GL->>GL: 打牌実行・河へ追加・ターン交代
 ```
 
+### 5.2 局終了時の学習振り返りレポート生成フロー
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Player as プレイヤー
+    participant GL as GameLoop / CLI
+    participant RT as ReviewTracker
+    participant Exp as ExplanationModel
+
+    Note over GL,RT: 対局中、毎巡の打牌を記録
+    GL->>RT: record_decision(turn, chosen_tile, candidates)
+    RT->>RT: EV損失 = best_ev - chosen_ev を算出・蓄積
+
+    Note over GL,RT: 和了または流局（終局時）
+    GL->>RT: generate_report()
+    RT->>Exp: 悪手打牌に対する要因解説を要求
+    Exp-->>RT: 「受入低下」「打点放棄」「危険度無視」の理由文
+    RT-->>GL: MatchReviewReport (総損失、一致率、悪手ランキング)
+    GL->>Player: 📊 終局振り返りHUD表示 (悪手診断・学習アドバイス)
+```
+
 ---
 
 ## 6. 実装タスク計画（マイルストーン）
@@ -200,13 +258,15 @@ sequenceDiagram
 gantt
     title 実装マイルストーン
     dateFormat  YYYY-MM-DD
-    section フェーズ1: 計算基盤
+    section フェーズ1: 計算基盤 & EVモデル (完了)
     向聴数・受け入れエンジン実装 (shanten/acceptance) :done, 2026-09-14, 2d
-    符計算・得点・ドラエンジン実装 (score/dora)      :active, 2026-09-16, 2d
-    section フェーズ2: 期待値・要因モデル
-    期待値スコアリングエンジン (expectation)        :2026-09-18, 2d
-    要因分解 & 自然言語解説生成 (explanation)       :2026-09-20, 2d
-    section フェーズ3: 対局CLI & HUD
-    リアルタイムヒントHUD付き対局ループ             :2026-09-22, 2d
-    Pythonバインディング拡充 & 統合テスト           :2026-09-24, 2d
+    符計算・得点・ドラエンジン実装 (score/dora)      :done, 2026-09-16, 2d
+    期待値スコアリングエンジン (expectation)        :done, 2026-09-18, 2d
+    要因分解 & 自然言語解説生成 (explanation)       :done, 2026-09-20, 2d
+    section フェーズ2: 振り返り診断 & 4人対局 (現在)
+    振り返り診断エンジン (review.rs)                :active, 2026-09-21, 2d
+    一人麻雀CLIへの振り返りレポート統合             :active, 2026-09-22, 1d
+    4人CPU対局ループ & 守備・押し引き学習 (play_with_cpu) :2026-09-23, 2d
+    Pythonバインディング拡充 & 統合テスト           :2026-09-25, 2d
 ```
+
