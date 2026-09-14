@@ -192,6 +192,48 @@ pub struct MatchReviewReport {
     pub total_ev_loss: f64,                          // 累計EV損失
     pub blunders: Vec<BlunderRecord>,                // 悪手一覧（EV損失順）
 }
+
+/// 何切るドリル問題
+pub struct DrillProblem {
+    pub hand_tiles: Vec<TileName>,                   // 14枚の手牌
+    pub dora_indicator: TileName,                    // ドラ表示牌
+    pub turn_number: usize,                          // 想定巡目
+    pub candidates: Vec<DiscardCandidateEvaluation>, // 打牌候補別EV評価
+    pub best_tile: TileName,                         // 最善打牌
+    pub rationale: String,                           // なぜ最善かの要因解説
+}
+
+/// 何切るセッション成績
+pub struct DrillSessionReport {
+    pub total_problems: usize,                       // 総出題数
+    pub correct_count: usize,                        // 正解数（最善手選択）
+    pub accuracy_rate: f64,                          // 正答率
+    pub total_ev_loss: f64,                          // 累計EV損失
+    pub average_ev_loss: f64,                        // 1問平均EV損失
+}
+
+/// 副露（鳴き）判断推奨
+pub struct CallAdvice {
+    pub target_tile: TileName,                       // 鳴きの対象牌（他家打牌）
+    pub choices: Vec<CallChoice>,                    // 選択肢一覧（チー/ポン/スルー）
+    pub best_action: CallAction,                     // 推奨アクション
+    pub rationale: String,                           // なぜその判断かの解説
+}
+
+pub struct CallChoice {
+    pub action: CallAction,
+    pub post_shanten: i8,                            // 鳴き後の向聴数
+    pub post_acceptance: usize,                      // 鳴き後の有効牌枚数
+    pub estimated_score: f64,                        // 鳴き後の想定打点
+    pub ev: f64,                                     // アクション総合EV
+}
+
+pub enum CallAction {
+    Pass,                                            // スルー
+    Chii,                                            // チー
+    Pon,                                             // ポン
+    Kan,                                             // カン
+}
 ```
 
 ---
@@ -250,6 +292,23 @@ sequenceDiagram
     GL->>Player: 📊 終局振り返りHUD表示 (悪手診断・学習アドバイス)
 ```
 
+### 5.3 何切るドリル問題出題・採点フロー
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Learner as 学習者
+    participant Drill as DrillEngine
+    participant EV as ExpectationEngine
+    participant Exp as ExplanationModel
+
+    Drill->>EV: generate_problem(shanten_filter)
+    EV-->>Drill: DrillProblem (牌姿14枚 + 候補ランキング + 最善手 + 解説)
+    Drill->>Learner: 🀄 問題提示 (手牌・ドラ・巡目)
+    Learner->>Drill: 回答入力 (例: "3m")
+    Drill->>Drill: 正誤判定 & EV損失算出
+    Drill->>Learner: 💡 即時フィードバック (正誤・EV差・要因解説)
+```
+
 ---
 
 ## 6. 実装タスク計画（マイルストーン）
@@ -263,10 +322,14 @@ gantt
     符計算・得点・ドラエンジン実装 (score/dora)      :done, 2026-09-16, 2d
     期待値スコアリングエンジン (expectation)        :done, 2026-09-18, 2d
     要因分解 & 自然言語解説生成 (explanation)       :done, 2026-09-20, 2d
-    section フェーズ2: 振り返り診断 & 4人対局 (現在)
-    振り返り診断エンジン (review.rs)                :active, 2026-09-21, 2d
-    一人麻雀CLIへの振り返りレポート統合             :active, 2026-09-22, 1d
-    4人CPU対局ループ & 守備・押し引き学習 (play_with_cpu) :2026-09-23, 2d
-    Pythonバインディング拡充 & 統合テスト           :2026-09-25, 2d
+    section フェーズ2: 振り返り診断 & 4人対局 (完了)
+    振り返り診断エンジン (review.rs)                :done, 2026-09-21, 2d
+    一人麻雀CLIへの振り返りレポート統合             :done, 2026-09-22, 1d
+    4人CPU対局ループ & 守備・押し引き学習 (play_with_cpu) :done, 2026-09-23, 2d
+    section フェーズ3: 何切るドリル & 鳴き判断 (現在)
+    何切るドリルエンジン & CLI (drill.rs / play_drill) :active, 2026-09-24, 2d
+    副露（鳴き）判断アドバイザー (call_advisor.rs)  :active, 2026-09-25, 2d
+    Pythonバインディング拡充 & 統合テスト           :2026-09-26, 1d
 ```
+
 
