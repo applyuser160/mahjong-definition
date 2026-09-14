@@ -309,6 +309,34 @@ sequenceDiagram
     Drill->>Learner: 💡 即時フィードバック (正誤・EV差・要因解説)
 ```
 
+### 5.4 4人対局における副露（鳴き）割り込み・ターン遷移フロー
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Player as プレイヤー (自家)
+    participant CPU as 他家CPU
+    participant Advisor as CallAdvisor
+    participant GL as 4人対局ループ (play_with_cpu)
+
+    CPU->>GL: 打牌 (例: 6p)
+    GL->>GL: ロン和了判定 (和了者なし)
+    GL->>Advisor: advise_call(hand, 6p, is_kamicha, ctx)
+    alt 鳴き候補が存在 (チー/ポン)
+        Advisor-->>GL: CallAdvice (推奨度, 理由, 候補一覧)
+        GL->>Player: 💡 鳴きアドバイザーHUD表示 (推奨度 / EV差 / 理由)
+        Player->>GL: 選択入力 ("chi 1", "pon", Enter/スルー)
+        alt プレイヤーが副露を選択
+            GL->>GL: 該当牌消費・open_melds追加・手番をプレイヤーへ変更
+            GL->>Player: 🀄 打牌入力要求 (1枚選択)
+            Player->>GL: 打牌 (例: 9m)
+        else スルー
+            GL->>GL: 通常通り次のツモ番へ進行
+        end
+    else 鳴き不可
+        GL->>GL: 通常通り次のツモ番へ進行
+    end
+```
+
 ---
 
 ## 6. 実装タスク計画（マイルストーン）
