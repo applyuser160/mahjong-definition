@@ -139,14 +139,15 @@ The system shall evaluate tile safety and risk score based on contextual river d
 4. Wall (No Chance / One Chance): Outer tiles shall have reduced risk scores when blocker counts reach 3 or 4.
 5. In the absence of opponent riichi/threat in early turns, penalty for discarding middle tiles shall be minimized.
 6. Public Python API (`py_evaluate_hand_discards`, `py_evaluate_placement_discards`, `py_get_ai_hud_data`) and CPU game loops shall accept and bind all opponent context (riichi, rivers, melds, dealer).
-7. Contextual seat alignment: `AnalysisContext` shall identify the target evaluation seat (`target_player: usize`). All opponent threat and defense evaluations (`estimate_win_probability`, `evaluate_tile_safety`, deal loss) shall consistently evaluate players where `p != target_player`, properly treating opponent 0 as a threat when evaluating player indices 1, 2, or 3, and never treating self as an opponent threat.
+7. Contextual seat alignment: `AnalysisContext` shall identify the target evaluation seat (`target_player: usize`). All opponent threat and defense evaluations (`estimate_win_probability`, `evaluate_tile_safety`, deal loss, `has_riichi_threat`, `dealer_riichi`) shall consistently evaluate players where `p != target_player`, properly treating opponent 0 as a threat when evaluating player indices 1, 2, or 3, and never treating self as an opponent threat.
 
 **受入条件:**
 - [ ] リーチ者の河にある現物牌の危険度が `0.0` と判定されること。
 - [ ] スジ牌の危険度が無筋の中張牌よりも大幅に低減されること。
 - [ ] リーチが入った局面において、現物・安全牌のEVが無筋危険牌を上回り、ベタオリ選択が正しく機能すること。
 - [ ] Python API および CLI サンプルにおいて対局状態から安全度・順位EVが一元的に計算されること。
-- [ ] `target_player != 0`（例: CPUや他家 player_idx）の分析時において、プレイヤー自身のリーチは他家脅威とならず、プレイヤー0のリーチが正しく他家脅威として和了率減衰・危険度判定されること。
+- [ ] `target_player != 0`（例: CPUや他家 player_idx）の分析時において、プレイヤー自身のリーチは他家脅威とならず、プレイヤー0のリーチが正しく他家脅威として和了率減衰・危険度判定・打牌EV（deal_loss_penalty）に反映されること。
+- [ ] `target_player = 2` の分析時において、「座席0のみがリーチ」の場合は他家リーチペナルティ（5000/6500点）が適用され、「座席2自身のみがリーチ」の場合は他家リーチペナルティが適用されないこと。
 
 **優先度:** Must  
 

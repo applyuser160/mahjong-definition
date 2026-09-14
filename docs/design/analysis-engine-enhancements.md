@@ -142,7 +142,7 @@ flowchart TD
 
 ### 4.3 動的危険度判定 (`evaluate_tile_safety`) および分析対象座席の整合 (`target_player`)
 
-`AnalysisContext` に分析対象座席を示す `target_player: usize`（デフォルト `0`）を保持し、他家の脅威判定・危険度判定・失点計算を一律に `p != target_player` で実施する。
+`AnalysisContext` に分析対象座席を示す `target_player: usize`（デフォルト `0`）を保持し、他家の脅威判定・危険度判定・失点計算・打牌EV計算におけるリーチ脅威判定（`has_riichi_threat` / `dealer_riichi`）を一律に `p != target_player` で実施する。
 これにより、player_idx = 1, 2, 3 の分析時にも、自身のリーチを他家脅威としてカウントせず、player 0 のリーチ・河・副露を正しく他家脅威として評価する。
 
 他家にリーチ者または高脅威者が存在する場合、河（捨て牌）・見え牌から動的リスクを計算する：
